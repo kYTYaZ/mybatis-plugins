@@ -12,7 +12,7 @@ public class Pagination implements Serializable {
 
     private Integer pageSize;
 
-    private boolean needCount;
+    private boolean needCount = true;
 
     public Integer getPage() {
         return Optional.ofNullable(page).orElse(-1);

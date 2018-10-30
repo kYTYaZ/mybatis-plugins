@@ -1,4 +1,4 @@
-package com.fishqq.mybatis.example;
+package com.fishqq.mybatis.sequence;
 
 import java.util.List;
 
@@ -11,4 +11,5 @@ public interface TestMapper {
     Integer insert(TestDo testDo);
     List<TestDo> all();
     PaginationResult<TestDo> listByPage(Pagination pagination);
+    void deleteAll();
 }

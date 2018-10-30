@@ -1,4 +1,4 @@
-package com.fishqq.mybatis.example;
+package com.fishqq.mybatis.sequence;
 
 import com.fishqq.mybatis.plugins.sequence.Sequence;
 

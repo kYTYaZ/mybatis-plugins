@@ -45,11 +45,22 @@ public class SequencePlugin implements Interceptor {
         if (isInsertSql(invocationInfo.getBoundSql().getSql())) {
             List<Sequence> sequenceParams = collectSequenceParams(invocationInfo.getParameter(), new ArrayList<>());
 
-            sequenceParams.forEach(sequence -> {
+            int batch = 0;
+            for (Sequence sequence : sequenceParams) {
                 if (sequence.getId() == null) {
-                    sequence.setId(generator.next(invocationInfo.getDataSource()));
+                    batch++;
                 }
-            });
+            }
+
+            long i = 0;
+            long first = generator.next(invocationInfo.getDataSource(), batch);
+
+            for (Sequence sequence : sequenceParams) {
+                if (sequence.getId() == null) {
+                    sequence.setId(first + i);
+                    i++;
+                }
+            }
         }
 
         Object result = invocation.proceed();
