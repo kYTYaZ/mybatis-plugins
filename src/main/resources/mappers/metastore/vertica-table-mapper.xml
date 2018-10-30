@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.alibaba.dt.dataphin.meta.core.dal.mapper.metastore.MetastoreTableMapper">
+    <select id="listTable" resultType="com.alibaba.dt.dataphin.meta.core.dal.dataobject.TableDO">
+        select table_name as name,
+        CASE WHEN table_type = 'VIEW' THEN 'true' ELSE 'false' END as isView,
+        remarks as comment,
+        'false' as isPartitioned
+        FROM v_catalog.all_tables
+        <where>
+            LOWER(schema_name) = LOWER(#{schema})
+            <if test="tableNames != null and tableNames.size > 0">
+                and LOWER(table_name) IN
+                <foreach collection="tableNames" item="tableName" open="(" separator="," close=")">
+                    LOWER(#{tableName})
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <select id="searchTable" resultType="com.alibaba.dt.dataphin.meta.core.dal.dataobject.TableDO">
+        select table_name as name,
+        CASE WHEN table_type = 'VIEW' THEN 'true' ELSE 'false' END as isView,
+        remarks as comment,
+        'false' as isPartitioned
+        FROM v_catalog.all_tables
+        <where>
+            <if test="keyword != null">
+                <choose>
+                    <when test="byPrefix">
+                        LOWER(table_name) LIKE (LOWER(#{keyword}) || '%')
+                    </when>
+                    <otherwise>
+                        LOWER(table_name) LIKE ('%' || LOWER(#{keyword}) || '%')
+                    </otherwise>
+                </choose>
+            </if>
+            and LOWER(schema_name) = LOWER(#{schema})
+        </where>
+        order by table_name asc
+    </select>
+
+    <select id="searchTableName" resultType="java.lang.String">
+        select table_name as name
+        FROM v_catalog.all_tables
+        <where>
+            <if test="keyword != null">
+                <choose>
+                    <when test="byPrefix">
+                        LOWER(table_name) LIKE (LOWER(#{keyword}) || '%')
+                    </when>
+                    <otherwise>
+                        LOWER(table_name) LIKE ('%' || LOWER(#{keyword}) || '%')
+                    </otherwise>
+                </choose>
+            </if>
+            and LOWER(schema_name) = LOWER(#{schema})
+        </where>
+        order by table_name asc
+    </select>
+
+    <select id="countTable" resultType="java.lang.Long">
+        select COUNT(table_name)
+        FROM v_catalog.all_tables
+        <where>
+            <if test="keyword != null">
+                <choose>
+                    <when test="byPrefix">
+                        LOWER(table_name) LIKE (LOWER(#{keyword}) || '%')
+                    </when>
+                    <otherwise>
+                        LOWER(table_name) LIKE ('%' || LOWER(#{keyword}) || '%')
+                    </otherwise>
+                </choose>
+            </if>
+            and LOWER(schema_name) = LOWER(#{schema})
+        </where>
+    </select>
+
+    <select id="listColumns" resultType="com.alibaba.dt.dataphin.meta.core.dal.dataobject.ColumnDO">
+        SELECT
+            COLUMN_NAME      AS name,
+            data_type        AS dataType,
+            ordinal_position AS seqNumber,
+            'false' as isPt
+        FROM v_catalog.columns
+        WHERE LOWER(table_name) = LOWER(#{tableName})
+              AND LOWER(table_schema) = LOWER(#{schema})
+        UNION ALL
+        SELECT
+            COLUMN_NAME      AS name,
+            data_type        AS dataType,
+            ordinal_position AS seqNumber
+        FROM v_catalog.view_columns
+        WHERE LOWER(table_name) = LOWER(#{tableName})
+              AND LOWER(table_schema) = LOWER(#{schema})
+        ORDER BY seqNumber ASC
+    </select>
+
+    <select id="countColumn" resultType="java.lang.Long">
+        SELECT table_columns.column_count + view_columns.column_count
+        FROM (
+                 SELECT
+                     'type'             AS type,
+                     count(column_name) AS column_count
+                 FROM v_catalog.columns
+                 WHERE LOWER(table_name) = LOWER(#{tableName})
+                       AND LOWER(table_schema) = LOWER(#{schema})
+             ) AS table_columns
+            JOIN (
+                     SELECT
+                         'type'             AS type,
+                         count(column_name) AS column_count
+                     FROM v_catalog.view_columns
+                     WHERE LOWER(table_name) = LOWER(#{tableName})
+                           AND LOWER(table_schema) = LOWER(#{schema})
+                 ) AS view_columns
+                ON table_columns.type = view_columns.type
+    </select>
+</mapper>

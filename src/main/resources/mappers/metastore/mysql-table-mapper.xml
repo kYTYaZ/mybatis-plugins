@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.alibaba.dt.dataphin.meta.core.dal.mapper.metastore.MetastoreTableMapper">
+    <select id="listTable" resultType="com.alibaba.dt.dataphin.meta.core.dal.dataobject.TableDO">
+        select table_name as name,
+        CASE WHEN table_type = 'VIEW' THEN 'true' ELSE 'false' END as isView,
+        table_comment as comment,
+        FALSE as isPartitioned,
+        create_time as createTime,
+        update_time as lastDdlTime
+        FROM information_schema.tables
+        <where>
+            LOWER(table_schema) = LOWER(#{schema})
+            <if test="database != null">
+                and LOWER(table_catalog) = LOWER(#{database})
+            </if>
+            <if test="tableNames != null and tableNames.size > 0">
+                and LOWER(table_name) IN
+                <foreach collection="tableNames" item="tableName" open="(" separator="," close=")">
+                    LOWER(#{tableName})
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <select id="searchTable" resultType="com.alibaba.dt.dataphin.meta.core.dal.dataobject.TableDO">
+        select table_name as name,
+        CASE WHEN table_type = 'VIEW' THEN 'true' ELSE 'false' END as isView,
+        table_comment as comment,
+        FALSE as isPartitioned,
+        create_time as createTime,
+        update_time as lastDdlTime
+        FROM information_schema.tables
+        <where>
+            <if test="keyword != null">
+                <choose>
+                    <when test="byPrefix">
+                        LOWER(table_name) LIKE CONCAT(LOWER(#{keyword}), '%')
+                    </when>
+                    <otherwise>
+                        LOWER(table_name) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="database != null">
+                and LOWER(table_catalog) = LOWER(#{database})
+            </if>
+            and LOWER(table_schema) = LOWER(#{schema})
+        </where>
+        order by table_name asc
+    </select>
+
+    <select id="searchTableName" resultType="java.lang.String">
+        select table_name as name
+        FROM information_schema.tables
+        <where>
+            <if test="keyword != null">
+                <choose>
+                    <when test="byPrefix">
+                        LOWER(table_name) LIKE CONCAT(LOWER(#{keyword}), '%')
+                    </when>
+                    <otherwise>
+                        LOWER(table_name) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="database != null">
+                and LOWER(table_catalog) = LOWER(#{database})
+            </if>
+            and LOWER(table_schema) = LOWER(#{schema})
+        </where>
+        order by table_name asc
+    </select>
+
+    <select id="countTable" resultType="java.lang.Long">
+        select COUNT(table_name)
+        FROM information_schema.tables
+        <where>
+            <if test="keyword != null">
+                <choose>
+                    <when test="byPrefix">
+                        LOWER(table_name) LIKE CONCAT(LOWER(#{keyword}), '%')
+                    </when>
+                    <otherwise>
+                        LOWER(table_name) LIKE CONCAT('%', LOWER(#{keyword}), '%')
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="database != null">
+                and LOWER(table_catalog) = LOWER(#{database})
+            </if>
+            and LOWER(table_schema) = LOWER(#{schema})
+        </where>
+    </select>
+
+    <select id="listColumns" resultType="com.alibaba.dt.dataphin.meta.core.dal.dataobject.ColumnDO">
+        SELECT
+        COLUMN_NAME AS name,
+        data_type AS dataType,
+        ordinal_position AS seqNumber,
+        CASE WHEN is_nullable = 'YES' THEN 'true' ELSE 'false' END as isAllowEmpty,
+        CASE WHEN column_key = 'PRI' THEN 'true' ELSE 'false' END as isPk,
+        'false' as isPt,
+        CASE WHEN extra = 'auto_increment' THEN 'true' ELSE 'false' END as isAutoInc,
+        column_comment as comment,
+        column_default as defaultValue
+        FROM information_schema.columns
+        <where>
+            LOWER(table_name) = LOWER(#{tableName})
+            <if test="database != null">
+                and LOWER(table_catalog) = LOWER(#{database})
+            </if>
+            and LOWER(table_schema) = LOWER(#{schema})
+        </where>
+        order by seqNumber asc
+    </select>
+
+    <select id="countColumn" resultType="java.lang.Long">
+        SELECT
+        count(COLUMN_NAME)
+        FROM information_schema.columns
+        <where>
+            LOWER(table_name) = LOWER(#{tableName})
+            <if test="database != null">
+                and LOWER(table_catalog) = LOWER(#{database})
+            </if>
+            and LOWER(table_schema) = LOWER(#{schema})
+        </where>
+    </select>
+</mapper>

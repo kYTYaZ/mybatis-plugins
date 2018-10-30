@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.alibaba.dt.dataphin.meta.core.dal.mapper.metastore.MetastoreTableMapper">
+    <select id="listTable" resultType="com.alibaba.dt.dataphin.meta.core.dal.dataobject.TableDO">
+        SELECT
+        TBLS.tbl_id as originIntId,
+        TBLS.tbl_name AS name,
+        CASE WHEN TBLS.tbl_type = 'VIRTUAL_VIEW'
+        THEN 'true'
+        ELSE 'false' END AS isView,
+        CASE WHEN PARTITION_KEYS.tbl_id IS NULL
+        THEN 'false'
+        ELSE 'true' END AS isPartitioned,
+        SDS.location AS location,
+        SDS.output_format AS fileType
+        FROM TBLS
+        LEFT JOIN DBS ON TBLS.db_id = DBS.db_id
+        LEFT JOIN SDS ON SDS.sd_id = TBLS.sd_id
+        LEFT JOIN PARTITION_KEYS ON PARTITION_KEYS.tbl_id = TBLS.tbl_id
+        <where>
+            LOWER(DBS.NAME) = LOWER(#{schema})
+            <if test="tableNames != null and tableNames.size > 0">
+                AND LOWER(TBLS.tbl_name) IN
+                <foreach collection="tableNames" item="name" separator="," open="(" close=")">
+                    LOWER(#{name})
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <select id="searchTable" resultType="com.alibaba.dt.dataphin.meta.core.dal.dataobject.TableDO">
+        SELECT
+        TBLS.tbl_id as originIntId,
+        TBLS.tbl_name AS name,
+        CASE WHEN TBLS.tbl_type = 'VIRTUAL_VIEW'
+        THEN 'true'
+        ELSE 'false' END AS isView,
+        CASE WHEN PARTITION_KEYS.tbl_id IS NULL
+        THEN 'false'
+        ELSE 'true' END AS isPartitioned,
+        SDS.location AS location,
+        SDS.output_format AS fileType
+        FROM TBLS
+        LEFT JOIN DBS ON TBLS.db_id = DBS.db_id
+        LEFT JOIN SDS ON SDS.sd_id = TBLS.sd_id
+        LEFT JOIN PARTITION_KEYS ON PARTITION_KEYS.tbl_id = TBLS.tbl_id
+        <where>
+            LOWER(DBS.name) = LOWER(#{schema})
+            <if test="keyword != null">
+                <choose>
+                    <when test="byPrefix">
+                        AND LOWER(TBLS.tbl_name) LIKE concat(LOWER(#{keyword}), '%')
+                    </when>
+                    <otherwise>
+                        AND LOWER(TBLS.tbl_name) LIKE concat('%', LOWER(#{keyword}), '%')
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="filterBbox">
+                AND LOWER(TBLS.tbl_name) regexp '^(fct|dim|dws).*\_od[0-9]{3}_v[0-9]+$'
+            </if>
+        </where>
+        ORDER BY TBLS.tbl_name ASC
+    </select>
+
+    <select id="searchTableName" resultType="java.lang.String">
+        SELECT
+        TBLS.tbl_name AS name
+        FROM TBLS
+        LEFT JOIN DBS ON TBLS.db_id = DBS.db_id
+        LEFT JOIN SDS ON SDS.sd_id = TBLS.sd_id
+        LEFT JOIN PARTITION_KEYS ON PARTITION_KEYS.tbl_id = TBLS.tbl_id
+        <where>
+            LOWER(DBS.name) = LOWER(#{schema})
+            <if test="keyword != null">
+                <choose>
+                    <when test="byPrefix">
+                        AND LOWER(TBLS.tbl_name) LIKE concat(LOWER(#{keyword}), '%')
+                    </when>
+                    <otherwise>
+                        AND LOWER(TBLS.tbl_name) LIKE concat('%', LOWER(#{keyword}), '%')
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="filterBbox">
+                AND LOWER(TBLS.tbl_name) regexp '^(fct|dim|dws).*\_od[0-9]{3}_v[0-9]+$'
+            </if>
+        </where>
+        ORDER BY TBLS.tbl_name ASC
+    </select>
+
+    <select id="countTable" resultType="java.lang.Long">
+        SELECT
+        COUNT(TBLS.tbl_name)
+        FROM TBLS
+        LEFT JOIN DBS ON TBLS.db_id = DBS.db_id
+        LEFT JOIN SDS ON SDS.sd_id = TBLS.sd_id
+        LEFT JOIN PARTITION_KEYS ON PARTITION_KEYS.tbl_id = TBLS.tbl_id
+        <where>
+            LOWER(DBS.name) = LOWER(#{schema})
+            <if test="keyword != null">
+                <choose>
+                    <when test="byPrefix">
+                        AND LOWER(TBLS.tbl_name) LIKE concat(LOWER(#{keyword}), '%')
+                    </when>
+                    <otherwise>
+                        AND LOWER(TBLS.tbl_name) LIKE concat('%', LOWER(#{keyword}), '%')
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="filterBbox">
+                AND LOWER(TBLS.tbl_name) regexp '^(fct|dim|dws).*\_od[0-9]{3}_v[0-9]+$'
+            </if>
+        </where>
+    </select>
+
+    <select id="countColumn" resultType="java.lang.Long">
+        SELECT COLUMNS.count + PCOLUMNS.count
+        FROM (
+                 SELECT
+                     COUNT(COLUMNS_V2.column_name) AS count,
+                     'type'                        AS type
+                 FROM COLUMNS_V2
+                     JOIN SDS ON COLUMNS_V2.cd_id = SDS.cd_id
+                     JOIN TBLS ON TBLS.sd_id = SDS.sd_id
+                     JOIN DBS ON TBLS.db_id = DBS.db_id
+                 WHERE
+                     LOWER(DBS.NAME) = LOWER(#{schema})
+                     AND LOWER(TBLS.tbl_name) = LOWER(#{tableName})) AS COLUMNS
+            JOIN (SELECT
+                      COUNT(PARTITION_KEYS.pkey_name) AS count,
+                      'type'                          AS type
+                  FROM PARTITION_KEYS
+                      LEFT JOIN TBLS ON TBLS.tbl_id = PARTITION_KEYS.tbl_id
+                      LEFT JOIN DBS ON DBS.db_id = TBLS.db_id
+                  WHERE
+                      LOWER(DBS.name) = LOWER(#{schema})
+                      AND LOWER(TBLS.tbl_name) = LOWER(#{tableName})
+                 ) AS PCOLUMNS ON COLUMNS.type = PCOLUMNS.type
+    </select>
+
+    <select id="listColumns" resultType="com.alibaba.dt.dataphin.meta.core.dal.dataobject.ColumnDO">
+        SELECT
+            name,
+            comment,
+            dataType,
+            seqNumber,
+            isPt
+        FROM (
+                 SELECT
+                     COLUMNS_V2.column_name AS name,
+                     COLUMNS_V2.comment     AS comment,
+                     type_name              AS dataType,
+                     FALSE                  AS isPt,
+                     COLUMNS_V2.integer_idx AS seqNumber
+                 FROM COLUMNS_V2
+                     JOIN SDS ON COLUMNS_V2.cd_id = SDS.cd_id
+                     JOIN TBLS ON TBLS.sd_id = SDS.sd_id
+                     JOIN DBS ON TBLS.db_id = DBS.db_id
+                 WHERE
+                     LOWER(DBS.NAME) = LOWER(#{schema})
+                     AND LOWER(TBLS.tbl_name) = LOWER(#{tableName})
+                 UNION ALL
+                 SELECT
+                     PARTITION_KEYS.pkey_name    AS name,
+                     PARTITION_KEYS.pkey_comment AS comment,
+                     PARTITION_KEYS.pkey_type    AS dataType,
+                     TRUE                        AS isPt,
+                     PARTITION_KEYS.integer_idx  AS seqNumber
+                 FROM PARTITION_KEYS
+                     LEFT JOIN TBLS ON TBLS.tbl_id = PARTITION_KEYS.tbl_id
+                     LEFT JOIN DBS ON DBS.db_id = TBLS.db_id
+                 WHERE
+                     LOWER(DBS.name) = LOWER(#{schema})
+                     AND LOWER(TBLS.tbl_name) = LOWER(#{tableName})
+             ) columns
+        ORDER BY seqNumber ASC
+    </select>
+
+    <select id="listPartitionByRange" resultType="com.alibaba.dt.dataphin.meta.core.dal.dataobject.PartitionDO">
+        SELECT
+        PARTITIONS.part_name AS name,
+        PARTITIONS.create_time AS createTimeSeconds
+        FROM PARTITIONS
+        JOIN TBLS ON PARTITIONS.tbl_id = TBLS.tbl_id
+        JOIN DBS ON TBLS.db_id = DBS.db_id
+        <where>
+            LOWER(DBS.name) = LOWER(#{schema})
+            AND LOWER(TBLS.tbl_name) = LOWER(#{tableName})
+            <if test="ranges != null and ranges.size() > 0">
+                AND
+                <foreach collection="ranges" item="range" open="(" close=")" separator=",">
+                    <if test="range.min != null">
+                        PARTITIONS.part_name &gt;= #{range.min}
+                    </if>
+                    <if test="range.max != null">
+                        AND PARTITIONS.part_name &lt;= #{range.max}
+                    </if>
+                </foreach>
+            </if>
+        </where>
+    </select>
+
+    <select id="listPartitionByPage" resultType="com.alibaba.dt.dataphin.meta.core.dal.dataobject.PartitionDO">
+        SELECT
+            PARTITIONS.part_name   AS name,
+            PARTITIONS.create_time AS createTimeSeconds
+        FROM PARTITIONS
+            JOIN TBLS ON PARTITIONS.tbl_id = TBLS.tbl_id
+            JOIN DBS ON TBLS.db_id = DBS.db_id
+        WHERE
+            LOWER(DBS.name) = LOWER(#{schema})
+            AND LOWER(TBLS.tbl_name) = LOWER(#{tableName})
+    </select>
+
+    <select id="countPartition" resultType="java.lang.Long">
+        SELECT COUNT(PARTITIONS.part_name)
+        FROM PARTITIONS
+            JOIN TBLS ON PARTITIONS.tbl_id = TBLS.tbl_id
+            JOIN DBS ON TBLS.db_id = DBS.db_id
+        WHERE
+            LOWER(DBS.name) = LOWER(#{schema})
+            AND LOWER(TBLS.tbl_name) = LOWER(#{tableName})
+    </select>
+
+    <select id="getMinMaxPartition" resultType="com.alibaba.dt.dataphin.meta.core.dal.dataobject.PartitionDO">
+        SELECT
+            PARTITIONS.part_name   AS name,
+            PARTITIONS.create_time AS createTimeSeconds
+        FROM PARTITIONS
+            JOIN TBLS ON PARTITIONS.tbl_id = TBLS.tbl_id
+            JOIN DBS ON TBLS.db_id = DBS.db_id
+        WHERE
+            LOWER(DBS.name) = LOWER(#{schema})
+            AND LOWER(TBLS.tbl_name) = LOWER(#{tableName})
+            AND (PARTITIONS.part_name = (SELECT MIN(PARTITIONS.part_name)
+                                         FROM PARTITIONS
+                                         WHERE LOWER(DBS.name) = LOWER(#{schema})
+                                               AND LOWER(TBLS.tbl_name) = LOWER(#{tableName}))
+                 OR
+                 PARTITIONS.part_name = (SELECT MAX(PARTITIONS.part_name)
+                                         FROM PARTITIONS
+                                         WHERE LOWER(DBS.name) = LOWER(#{schema})
+                                               AND LOWER(TBLS.tbl_name) = LOWER(#{tableName})))
+    </select>
+</mapper>
