@@ -89,20 +89,20 @@ public class PaginationPlugin implements Interceptor {
     private Object process(Invocation invocation) throws Throwable {
         InvocationInfo invocationInfo = new InvocationInfo(invocation);
 
-        PaginationResult result = new PaginationResult();
+        PaginatedList result = new PaginatedList();
 
         Pagination paginationCriteria = getPaginationParam(invocationInfo);
 
         if (paginationCriteria == null) {
             Object data = invocation.proceed();
             result.setData((List)data);
-            result.setTotalCount(((List<Object>)data).size());
+            result.setTotal(((List<Object>)data).size());
             return result;
         }
 
         if (paginationCriteria.isNeedCount()) {
             Long count = executeCount(invocationInfo);
-            result.setTotalCount(count.intValue());
+            result.setTotal(count.intValue());
         }
 
         MappedStatement ms = invocationInfo.getMappedStatement();

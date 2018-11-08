@@ -1,7 +1,7 @@
 package com.fishqq.mybatis.sequence;
 
 import com.fishqq.mybatis.plugins.pagination.Pagination;
-import com.fishqq.mybatis.plugins.pagination.PaginationResult;
+import com.fishqq.mybatis.plugins.pagination.PaginatedList;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.junit.Assert;
@@ -37,11 +37,11 @@ public class PaginationTest {
         }
 
         Pagination pagination = new Pagination().setPage(1).setPageSize(pageSize);
-        PaginationResult<TestDo> result = testMapper.listByPage(pagination);
+        PaginatedList<TestDo> result = testMapper.listByPage(pagination);
 
-        System.out.printf("total: %d, size: %d\n", result.getTotalCount(), result.size());
+        System.out.printf("total: %d, size: %d\n", result.getTotal(), result.size());
 
-        Assert.assertEquals((int) result.getTotalCount(), total);
+        Assert.assertEquals((int) result.getTotal(), total);
         Assert.assertEquals(result.size(), pageSize);
     }
 }
